@@ -99,9 +99,21 @@ def main():
     # Обработчик всех текстовых сообщений
     application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message))
 
+    port = int(os.environ.get('PORT', 8443))
+    
+    # Запускаем веб-сервер для обработки вебхуков (если используете)
+    # Или просто запускаем polling с обработкой порта
+    application.run_webhook(
+        listen="0.0.0.0",
+        port=port,
+        url_path=BOT_TOKEN,
+        webhook_url=f"https://your-app-name.onrender.com/{BOT_TOKEN}"
+    )
+
     print("🟢 Бот запущен...")
     application.run_polling()
 
 
 if __name__ == '__main__':
+
     main()
