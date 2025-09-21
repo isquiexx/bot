@@ -4,6 +4,8 @@ from telegram.ext import Application, CommandHandler, ContextTypes, MessageHandl
 from config import BOT_TOKEN, SCHEDULE_URL, MOPSCI_STICKERS
 from parser import get_nearest_schedule
 import random
+import os
+import asyncio
 
 
 async def send_mopsci_sticker(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -117,3 +119,4 @@ def main():
 if __name__ == '__main__':
 
     main()
+
