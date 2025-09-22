@@ -6,6 +6,7 @@ from parser import get_nearest_schedule
 import random
 import os
 import asyncio
+from keep_alive import keep_alive
 
 
 async def send_mopsci_sticker(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -48,7 +49,7 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if has_mention or has_botan:
         # Добавляем небольшую задержку для естественности
         await context.bot.send_chat_action(chat_id=update.effective_chat.id, action="typing")
-        
+
         schedule_text = get_nearest_schedule(SCHEDULE_URL)
         await update.message.reply_text(schedule_text)
         await send_mopsci_sticker(update, context)
@@ -89,6 +90,8 @@ async def welcome_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 
 def main():
+    keep_alive()
+
     application = Application.builder().token(BOT_TOKEN).build()
 
     # Обработчики команд
@@ -106,7 +109,7 @@ def main():
         # Используем вебхуки для Render
         port = int(os.environ.get('PORT', 8443))
         webhook_url = f"https://bot-schedule-bjo3.onrender.com/{BOT_TOKEN}"
-        
+
         application.run_webhook(
             listen="0.0.0.0",
             port=port,
@@ -119,6 +122,19 @@ def main():
         application.run_polling()
         print("🟢 Бот запущен локально с поллингом...")
 
+
+    if 'RENDER' in os.environ or 'PORT' in os.environ:
+        port = int(os.environ.get('PORT', 8443))
+        webhook_url = f"https://bot-schedule-bjo3.onrender.com/{BOT_TOKEN}"
+
+        application.run_webhook(
+            listen="0.0.0.0",
+            port=port,
+            url_path=BOT_TOKEN,
+            webhook_url=webhook_url
+    )
+    else:
+        application.run_polling()
 
 if __name__ == '__main__':
     main()
