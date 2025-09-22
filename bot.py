@@ -48,7 +48,7 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if has_mention or has_botan:
         # Добавляем небольшую задержку для естественности
         await context.bot.send_chat_action(chat_id=update.effective_chat.id, action="typing")
-
+        
         schedule_text = get_nearest_schedule(SCHEDULE_URL)
         await update.message.reply_text(schedule_text)
         await send_mopsci_sticker(update, context)
@@ -76,13 +76,13 @@ async def welcome_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     for member in update.message.new_chat_members:
         if member.username == context.bot.username:
             welcome_text = (
-                "Привет! Я бот-расписание 🤓\n\n"
-                "Просто напишите в чат:\n"
-                "• 'Ботан' - и я пришлю расписание\n"
-                "• 'Ботан, какие пары?'\n"
-                "• Или упомяните меня @{context.bot.username}\n\n"
-                "Рад помогать с расписанием! 📚\n"
-                "И да, у меня есть мопсики! 🐶"
+                f"Привет! Я бот-расписание 🤓\n\n"
+                f"Просто напишите в чат:\n"
+                f"• 'Ботан' - и я пришлю расписание\n"
+                f"• 'Ботан, какие пары?'\n"
+                f"• Или упомяните меня @{context.bot.username}\n\n"
+                f"Рад помогать с расписанием! 📚\n"
+                f"И да, у меня есть мопсики! 🐶"
             )
             await update.message.reply_text(welcome_text)
             await send_mopsci_sticker(update, context)
@@ -101,22 +101,24 @@ def main():
     # Обработчик всех текстовых сообщений
     application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message))
 
-    port = int(os.environ.get('PORT', 8443))
-    
-    # Запускаем веб-сервер для обработки вебхуков (если используете)
-    # Или просто запускаем polling с обработкой порта
-    application.run_webhook(
-        listen="0.0.0.0",
-        port=port,
-        url_path=BOT_TOKEN,
-        webhook_url=f"https://your-app-name.onrender.com/{BOT_TOKEN}"
-    )
-
-    print("🟢 Бот запущен...")
-    application.run_polling()
+    # Проверяем, работаем ли на Render (есть ли переменная PORT)
+    if 'RENDER' in os.environ or 'PORT' in os.environ:
+        # Используем вебхуки для Render
+        port = int(os.environ.get('PORT', 8443))
+        webhook_url = f"https://bot-schedule-bjo3.onrender.com/{BOT_TOKEN}"
+        
+        application.run_webhook(
+            listen="0.0.0.0",
+            port=port,
+            url_path=BOT_TOKEN,
+            webhook_url=webhook_url
+        )
+        print(f"🟢 Бот запущен на Render с вебхуком: {webhook_url}")
+    else:
+        # Локальная разработка с поллингом
+        application.run_polling()
+        print("🟢 Бот запущен локально с поллингом...")
 
 
 if __name__ == '__main__':
-
     main()
-
