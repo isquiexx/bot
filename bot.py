@@ -7,6 +7,7 @@ import random
 import os
 import asyncio
 from keep_alive import keep_alive
+import re
 
 
 async def send_mopsci_sticker(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -140,4 +141,5 @@ def main():
 
 if __name__ == '__main__':
     main()
+
 
