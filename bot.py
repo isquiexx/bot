@@ -30,7 +30,7 @@ async def today_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 
 async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """Обработка всех сообщений - реагирует на 'ботан' или 'бот' в любом контексте"""
+    """Обработка всех сообщений - реагирует на 'ботан' или 'бот' как отдельные слова"""
     if not update.message or not update.message.text:
         return
 
@@ -40,15 +40,17 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     # Проверяем, есть ли упоминание бота
     has_mention = f"@{bot_username}" in message_text
 
-    # Проверяем, есть ли слова "ботан" или "бот" в любом месте сообщения
-    has_botan = any(word in message_text for word in ["ботан", "бот"])
+    # Разбиваем сообщение на слова и проверяем наличие ключевых слов как отдельных слов
+    words = re.findall(r'\b\w+\b', message_text)  # Извлекаем отдельные слова
+    has_botan = any(word in ["ботан", "бот"] for word in words)
 
     # Активируем бота если:
     # 1. Есть прямое упоминание @username
-    # 2. Или есть слова "ботан" или "бот" в любом контексте
+    # 2. Или есть слова "ботан" или "бот" как отдельные слова
     if has_mention or has_botan:
         # Добавляем небольшую задержку для естественности
         await context.bot.send_chat_action(chat_id=update.effective_chat.id, action="typing")
+        await asyncio.sleep(1)  # Задержка 1 секунда
 
         schedule_text = get_nearest_schedule(SCHEDULE_URL)
         await update.message.reply_text(schedule_text)
@@ -138,3 +140,4 @@ def main():
 
 if __name__ == '__main__':
     main()
+
