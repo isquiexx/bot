@@ -2,7 +2,7 @@
 # Конфигурационные настройки бота
 
 BOT_TOKEN = '8251217339:AAElFgVtqWAcG3lbvHy2MVuNKLs9RuKyAx4'  # Замените на токен от @BotFather
-SCHEDULE_URL = 'https://www.chtotib.ru/schedule_gl/cg54.htm'
+SCHEDULE_URL = 'https://www.chtotib.ru/schedule_gl/cg47.htm'
 
 # Добавьте сюда ID стикеров с мопсиками (получите через @idstickerbot)
 MOPSCI_STICKERS = [
@@ -12,4 +12,5 @@ MOPSCI_STICKERS = [
     "CAACAgIAAxkBAAEPZKRoysY6neNMFhUECDLyTaOue-1YPgACRE8AAvLFCEqHYc4pxBAy7DYE",
     "CAACAgIAAxkBAAEPZKZoysZGXOswRSdfJhaDdz8R1ONJ7AACCEsAAhtiCUrJpyWSCn7XYzYE"
 ]
+
 
