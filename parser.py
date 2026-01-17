@@ -233,6 +233,7 @@ def get_week_schedule(url: str) -> str:
             
             if not schedule_data:
                 result.append(f"📅 {display_date}")
+                result.append("")  # Пустая строка между парами
                 result.append("🎉 Пар нет!")
             else:
                 result.append(f"📅 {display_date}")
@@ -240,7 +241,6 @@ def get_week_schedule(url: str) -> str:
                     result.append(f"  {pair['number']} пара ({pair['time']})")
                     result.append(f"  📚 {pair['subject']}")
                     result.append(f"  👨‍🏫 {pair['teacher']}")
-                    result.append(f"  🚪 {pair['room']}")
                     result.append("")  # Пустая строка между парами
         
         return "\n".join(result)
@@ -318,3 +318,4 @@ def format_daily_schedule(date_text: str, pairs: List[Dict]) -> str:
             result.append("⏰ *Вечерний перерыв:* 15:35-16:05 ☕\n")
     
     return "\n".join(result)
+
