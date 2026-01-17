@@ -1,6 +1,9 @@
 import requests
 import re
 from bs4 import BeautifulSoup
+from datetime import datetime
+from typing import List, Tuple, Dict
+
 
 def get_time_mapping():
     return {
@@ -16,11 +19,8 @@ def get_time_mapping():
     }
 
 
-
-def get_nearest_schedule(url):
-    """
-    Получает расписание на ближайшую дату с использованием rowspan для определения границ
-    """
+def parse_all_dates(url: str) -> Dict[str, List[Dict]]:
+    """Парсит все даты из расписания и возвращает словарь {дата: расписание}"""
     try:
         headers = {
             'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
@@ -31,7 +31,9 @@ def get_nearest_schedule(url):
         soup = BeautifulSoup(response.text, 'lxml')
         time_mapping = get_time_mapping()
 
-        # 1. Находим все ячейки с датами
+        all_schedules = {}
+
+        # Находим все ячейки с датами
         date_cells = []
         all_cells = soup.find_all('td', class_='hd')
 
@@ -40,112 +42,286 @@ def get_nearest_schedule(url):
                 date_cells.append(cell)
 
         if not date_cells:
-            return "Не удалось найти даты в расписании"
+            return {}
 
-        # 2. Берем первую (ближайшую) дату
-        first_date_cell = date_cells[0]
-        date_text = first_date_cell.get_text(separator=' ', strip=True).split(' ')[0]
-
-        # 3. Находим все строки таблицы
+        # Находим все строки таблицы
         all_rows = soup.find_all('tr')
-        date_row = first_date_cell.find_parent('tr')
 
-        if not date_row:
-            return "Ошибка: не удалось найти строку с датой"
+        for date_cell in date_cells:
+            date_text = date_cell.get_text(separator=' ', strip=True).split(' ')[0]
 
-        # 4. Определяем границы дня через rowspan
-        rowspan = int(first_date_cell.get('rowspan', 1))
-        date_row_index = all_rows.index(date_row)
-
-        # 5. Собираем пары только для этого дня
-        schedule_data = []
-
-        for i in range(date_row_index, date_row_index + rowspan):
-            if i >= len(all_rows):
-                break
-
-            current_row = all_rows[i]
-            cells = current_row.find_all('td')
-
-            # Пропускаем строку, если она содержит только дату
-            if len(cells) == 1 and cells[0].get('rowspan'):
+            # Находим строку с датой
+            date_row = date_cell.find_parent('tr')
+            if not date_row:
                 continue
 
-            # Ищем номер пары в строке
-            for j, cell in enumerate(cells):
-                if ('hd' in cell.get('class', []) and
-                        cell.text.strip().isdigit() and
-                        not cell.get('rowspan')):
+            # Определяем границы дня через rowspan
+            rowspan = int(date_cell.get('rowspan', 1))
+            date_row_index = all_rows.index(date_row)
 
-                    pair_number = cell.text.strip()
-                    pair_time = time_mapping.get(pair_number, 'Время не указано')
+            # Собираем пары для этого дня
+            schedule_data = []
 
-                    # Ищем ячейку с информацией о паре (следующая ячейка)
-                    if j + 1 < len(cells):
-                        info_cell = cells[j + 1]
-                        if 'ur' in info_cell.get('class', []):
-                            subject_tag = info_cell.find('a', class_='z1')
-                            subject = subject_tag.text.strip() if subject_tag else 'Предмет не указан'
+            for i in range(date_row_index, date_row_index + rowspan):
+                if i >= len(all_rows):
+                    break
 
-                            room_tag = info_cell.find('a', class_='z2')
-                            room = room_tag.text.strip() if room_tag else 'Аудитория не указана'
+                current_row = all_rows[i]
+                cells = current_row.find_all('td')
 
-                            teacher_tag = info_cell.find('a', class_='z3')
-                            teacher = teacher_tag.text.strip() if teacher_tag else 'Преподаватель не указан'
+                # Пропускаем строку, если она содержит только дату
+                if len(cells) == 1 and cells[0].get('rowspan'):
+                    continue
 
-                            schedule_entry = {
-                                'number': pair_number,
-                                'time': pair_time,
-                                'subject': subject,
-                                'teacher': teacher,
-                                'room': room
-                            }
-                            schedule_data.append(schedule_entry)
+                # Ищем номер пары в строке
+                for j, cell in enumerate(cells):
+                    if ('hd' in cell.get('class', []) and
+                            cell.text.strip().isdigit() and
+                            not cell.get('rowspan')):
 
-        return format_nearest_schedule(date_text, schedule_data)
+                        pair_number = cell.text.strip()
+                        pair_time = time_mapping.get(pair_number, 'Время не указано')
+
+                        # Ищем ячейку с информацией о паре
+                        if j + 1 < len(cells):
+                            info_cell = cells[j + 1]
+                            if 'ur' in info_cell.get('class', []):
+                                subject_tag = info_cell.find('a', class_='z1')
+                                subject = subject_tag.text.strip() if subject_tag else 'Предмет не указан'
+
+                                room_tag = info_cell.find('a', class_='z2')
+                                room = room_tag.text.strip() if room_tag else 'Аудитория не указана'
+
+                                teacher_tag = info_cell.find('a', class_='z3')
+                                teacher = teacher_tag.text.strip() if teacher_tag else 'Преподаватель не указан'
+
+                                schedule_entry = {
+                                    'number': pair_number,
+                                    'time': pair_time,
+                                    'subject': subject,
+                                    'teacher': teacher,
+                                    'room': room
+                                }
+                                schedule_data.append(schedule_entry)
+
+            if schedule_data:
+                schedule_data.sort(key=lambda x: int(x['number']))
+                all_schedules[date_text] = schedule_data
+
+        return all_schedules
 
     except Exception as e:
-        return f"Ошибка при получении расписания: {e}"
+        print(f"Ошибка при парсинге всех дат: {e}")
+        return {}
 
 
-def format_nearest_schedule(date_text, pairs):
+def get_nearest_schedule(url: str) -> Tuple[str, str]:
     """
-    Форматирует расписание на ближайшую дату с перерывами
+    Получает расписание на ближайшую дату
+    Возвращает: (отформатированное расписание, дата)
+    """
+    try:
+        all_schedules = parse_all_dates(url)
+        if not all_schedules:
+            return "❌ Не удалось загрузить расписание", ""
+
+        # Берем первую (ближайшую) дату
+        nearest_date = list(all_schedules.keys())[0]
+        schedule_data = all_schedules[nearest_date]
+
+        schedule_text = format_daily_schedule(nearest_date, schedule_data)
+        return schedule_text, nearest_date
+
+    except Exception as e:
+        return f"❌ Ошибка при получении расписания: {e}", ""
+
+
+def get_schedule_for_date(url: str, date_str: str) -> str:
+    """
+    Получает расписание для конкретной даты
+    """
+    try:
+        all_schedules = parse_all_dates(url)
+        if not all_schedules:
+            return "❌ Не удалось загрузить расписание"
+
+        if date_str not in all_schedules:
+            return f"❌ Расписание на {date_str} не найдено"
+
+        schedule_data = all_schedules[date_str]
+        return format_daily_schedule(date_str, schedule_data)
+
+    except Exception as e:
+        return f"❌ Ошибка: {e}"
+
+
+def get_next_day_schedule(url: str, current_date: str) -> Tuple[str, str, bool]:
+    """
+    Получает расписание на следующий день
+    Возвращает: (расписание, дата следующего дня, есть_ли_следующий_вообще)
+    """
+    try:
+        all_schedules = parse_all_dates(url)
+        if not all_schedules:
+            return "", "", False
+
+        dates = list(all_schedules.keys())
+
+        if current_date not in dates:
+            return "", "", False
+
+        current_index = dates.index(current_date)
+        if current_index >= len(dates) - 1:
+            return "", "", False
+
+        next_date = dates[current_index + 1]
+        schedule_data = all_schedules[next_date]
+
+        schedule_text = format_daily_schedule(next_date, schedule_data)
+
+        return schedule_text, next_date, True
+
+    except Exception as e:
+        print(f"Ошибка при получении следующего дня: {e}")
+        return "", "", False
+
+
+def get_week_schedule(url: str) -> str:
+    """
+    Получает расписание на неделю (первые 7 дней)
+    """
+    try:
+        all_schedules = parse_all_dates(url)
+        if not all_schedules:
+            return "❌ Не удалось загрузить расписание"
+
+        dates = list(all_schedules.keys())
+
+        # Берем максимум 7 дней
+        week_dates = dates[:min(7, len(dates))]
+
+        if not week_dates:
+            return "📭 Нет данных о расписании"
+
+        result = []
+
+        for i, date_str in enumerate(week_dates):
+            schedule_data = all_schedules[date_str]
+
+            # Форматируем дату на русском
+            try:
+                date_obj = datetime.strptime(date_str, "%d.%m.%Y")
+
+                # Русские названия месяцев
+                months_ru = {
+                    1: 'января', 2: 'февраля', 3: 'марта', 4: 'апреля',
+                    5: 'мая', 6: 'июня', 7: 'июля', 8: 'августа',
+                    9: 'сентября', 10: 'октября', 11: 'ноября', 12: 'декабря'
+                }
+
+                # Русские названия дней недели
+                days_ru = {
+                    0: 'Понедельник', 1: 'Вторник', 2: 'Среда',
+                    3: 'Четверг', 4: 'Пятница', 5: 'Суббота', 6: 'Воскресенье'
+                }
+
+                day = date_obj.day
+                month = months_ru.get(date_obj.month, '')
+                weekday = days_ru.get(date_obj.weekday(), '')
+
+                display_date = f"{day} {month} ({weekday})"
+            except:
+                display_date = date_str
+
+            # Добавляем разделитель перед каждым днем (кроме первого)
+            if i > 0:
+                result.append("━━━━━━━━━━━━━━━━━━━━━━")
+
+            if not schedule_data:
+                result.append(f"📅 {display_date}")
+                result.append("🎉 Пар нет!")
+            else:
+                result.append(f"📅 {display_date}")
+                result.append("")  # Пустая строка между парами
+                for pair in schedule_data:
+                    result.append(f"  {pair['number']} пара ({pair['time']})")
+                    result.append(f"  📚 {pair['subject']}")
+                    result.append(f"  👨‍🏫 {pair['teacher']}")
+                    result.append("")  # Пустая строка между парами
+
+        return "\n".join(result)
+
+    except Exception as e:
+        print(f"Ошибка при получении недельного расписания: {e}")
+        return f"❌ Ошибка при получении недельного расписания"
+
+
+def format_daily_schedule(date_text: str, pairs: List[Dict]) -> str:
+    """
+    Форматирует расписание на день С Markdown
     """
     if not pairs:
-        return f"📅 {date_text}\n\nПар нет! 🎉"
-
-    # Сортируем пары по номеру
-    pairs.sort(key=lambda x: int(x['number']))
+        return f"📅 *{date_text}*\n\n🎉 Пар нет! Отдыхай!"
 
     # Случайные приветствия
     greetings = [
-        "Я твой ботаник! 🤓 Вот расписание:",
-        "Держи расписание, студент! 📚",
-        "Бот-ботаник к вашим услугам! 🧪",
-        "Расписание готово, профессор! 🔬"
+        "📚 Вот расписание:",
+        "🎓 Ботан к вашим услугам:",
+        "💯 Стопроцентное расписание, проверено ботан-детектором:",
+        "🚨 Внимание! Обнаружено расписание:",
+        "🐶 Мопсик-ассистент нашел расписание! Вот оно:",
+        "🦴 Мопс принес в зубах ваше расписание:",
+        "👃 Мопсик учуял расписание! Подарок от носатого детектива:",
+        "💤 Мопсик проснулся специально, чтобы принести вам расписание:",
+        "📸 Мопсик сделал фото расписания! Снимок с места событий:",
+        "🔎 Следствие ведет мопсик! Результаты оперативной работы:",
+        "🏆 Расписание чемпионского уровня, одобрено ботан-комитетом:",
+        "🍖 Мопсик променял косточку на расписание! Вот что получил:",
     ]
 
     import random
     greeting = random.choice(greetings)
 
-    result = [f"{greeting}\n📅 {date_text}\n"]
+    # Форматируем дату на русском
+    try:
+        date_obj = datetime.strptime(date_text, "%d.%m.%Y")
+
+        # Русские названия месяцев
+        months_ru = {
+            1: 'января', 2: 'февраля', 3: 'марта', 4: 'апреля',
+            5: 'мая', 6: 'июня', 7: 'июля', 8: 'августа',
+            9: 'сентября', 10: 'октября', 11: 'ноября', 12: 'декабря'
+        }
+
+        # Русские названия дней недели
+        days_ru = {
+            0: 'Понедельник', 1: 'Вторник', 2: 'Среда',
+            3: 'Четверг', 4: 'Пятница', 5: 'Суббота', 6: 'Воскресенье'
+        }
+
+        day = date_obj.day
+        month = months_ru.get(date_obj.month, '')
+        weekday = days_ru.get(date_obj.weekday(), '')
+
+        display_date = f"{day} {month} ({weekday})"
+    except:
+        display_date = date_text
+
+    result = [f"{greeting}\n📅 *{display_date}*\n"]
 
     for i, pair in enumerate(pairs):
         # Добавляем пару
         result.append(
-            f"🔹 {pair['number']} пара ({pair['time']})\n"
+            f"🔹 *{pair['number']} пара* ({pair['time']})\n"
             f"📚 {pair['subject']}\n"
             f"👨‍🏫 {pair['teacher']}\n"
             f"🚪 Кабинет {pair['room']}\n"
         )
 
-        # Добавляем перерыв после 3-й пары (если есть 4-я пара)
+        # Добавляем перерывы
         if pair['number'] == '3' and i + 1 < len(pairs) and pairs[i + 1]['number'] == '4':
-            result.append("⏰ Обеденный перерыв: 11:35-12:15 🍔\n")
-
-        # Добавляем перерыв после 6-й пары (если есть 7-я пара)
+            result.append("⏰ *Обеденный перерыв:* 11:35-12:15 🍔\n")
         elif pair['number'] == '6' and i + 1 < len(pairs) and pairs[i + 1]['number'] == '7':
-            result.append("⏰ Вечерний перерыв: 15:35-16:05 ☕\n")
+            result.append("⏰ *Вечерний перерыв:* 15:35-16:05 ☕\n")
 
     return "\n".join(result)
