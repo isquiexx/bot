@@ -308,12 +308,17 @@ def format_daily_schedule(date_text: str, pairs: List[Dict]) -> str:
     result = [f"{greeting}\n📅 *{display_date}*\n"]
     
     for i, pair in enumerate(pairs):
+        # Экранируем символы Markdown в тексте
+        subject = escape_markdown(pair['subject'])
+        teacher = escape_markdown(pair['teacher'])
+        room = escape_markdown(pair['room'])
+        
         # Добавляем пару
         result.append(
             f"🔹 *{pair['number']} пара* ({pair['time']})\n"
-            f"📚 {pair['subject']}\n"
-            f"👨‍🏫 {pair['teacher']}\n"
-            f"🚪 Кабинет {pair['room']}\n"
+            f"📚 {subject}\n"
+            f"👨‍🏫 {teacher}\n"
+            f"🚪 Кабинет {room}\n"
         )
         
         # Добавляем перерывы
@@ -323,5 +328,6 @@ def format_daily_schedule(date_text: str, pairs: List[Dict]) -> str:
             result.append("⏰ *Вечерний перерыв:* 15:35-16:05 ☕\n")
     
     return "\n".join(result)
+
 
 
