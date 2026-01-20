@@ -6,7 +6,7 @@ from typing import List, Tuple, Dict
 
 def escape_markdown(text: str) -> str:
     """Удаляет спецсимволы Markdown"""
-    escape_chars = r'_*[]()~`>#+-=|{}.!'
+    escape_chars = r'_*[]()~`>#+-=|{}!'
     # Просто удаляем все спецсимволы
     return ''.join(char for char in text if char not in escape_chars)
 
@@ -329,6 +329,7 @@ def format_daily_schedule(date_text: str, pairs: List[Dict]) -> str:
             result.append("⏰ *Вечерний перерыв:* 15:35-16:05 ☕\n")
     
     return "\n".join(result)
+
 
 
 
