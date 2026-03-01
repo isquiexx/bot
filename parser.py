@@ -18,9 +18,8 @@ def get_time_mapping():
         '4': '12:15-13:15',
         '5': '13:25-14:25',
         '6': '14:35-15:35',
-        '7': '16:05-17:05',
-        '8': '17:15-18:15',
-        '9': '18:25-19:25'
+        '7': '15:55-16:55',
+        '8': '17:05-18:05'
     }
 
 def parse_all_dates(url: str) -> Dict[str, List[Dict]]:
@@ -326,9 +325,10 @@ def format_daily_schedule(date_text: str, pairs: List[Dict]) -> str:
         if pair['number'] == '3' and i + 1 < len(pairs) and pairs[i + 1]['number'] == '4':
             result.append("⏰ *Обеденный перерыв:* 11:35-12:15 🍔\n")
         elif pair['number'] == '6' and i + 1 < len(pairs) and pairs[i + 1]['number'] == '7':
-            result.append("⏰ *Вечерний перерыв:* 15:35-16:05 ☕\n")
+            result.append("⏰ *Вечерний перерыв:* 15:35-15:55 ☕\n")
     
     return "\n".join(result)
+
 
 
 
